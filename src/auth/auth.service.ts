@@ -19,21 +19,19 @@ export class AuthService {
   ) {}
 
   createToken(user: User) {
-    return {
-      accessToken: this.jwtService.sign(
-        {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-        },
-        {
-          expiresIn: '7 days',
-          subject: String(user.id),
-          issuer: 'login',
-          audience: 'users',
-        },
-      ),
-    };
+    return this.jwtService.sign(
+      {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+      {
+        expiresIn: '7 days',
+        subject: String(user.id),
+        issuer: 'login',
+        audience: 'users',
+      },
+    );
   }
 
   checkToken(token: string) {
@@ -63,7 +61,13 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email and/or password.');
     }
 
-    return this.createToken(user);
+    return {
+      data: {
+        name: user.name,
+        email: user.email,
+        access_token: this.createToken(user),
+      },
+    };
   }
 
   isValidToken(token: string) {
@@ -109,7 +113,28 @@ export class AuthService {
   }
 
   async register(data: AuthRegisterDTO) {
+    const dbUser = await this.prisma.user.findFirst({
+      where: {
+        email: data.email,
+      },
+    });
+    if (dbUser) {
+      if (!(await bcrypt.compare(data.password, dbUser.password))) {
+        throw new UnauthorizedException('Invalid email and/or password.');
+      }
+      return this.getUserData(dbUser);
+    }
     const user = await this.userService.create(data);
-    return this.createToken(user);
+    return this.getUserData(user);
+  }
+
+  getUserData(user: User) {
+    return {
+      data: {
+        name: user.name,
+        email: user.email,
+        access_token: this.createToken(user),
+      },
+    };
   }
 }
