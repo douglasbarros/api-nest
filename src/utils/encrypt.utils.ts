@@ -1,5 +1,6 @@
 import { createCipheriv, createDecipheriv, scrypt } from 'crypto';
 import { promisify } from 'util';
+import * as bcrypt from 'bcrypt';
 
 export class EncryptUtils {
   static encSecret = process.env.ENC_SECRET;
@@ -24,5 +25,10 @@ export class EncryptUtils {
       decipher.final(),
     ]);
     return decryptedPayload.toString();
+  }
+
+  static async encryptPass(password: string) {
+    const salt = await bcrypt.genSalt();
+    return bcrypt.hash(password, salt);
   }
 }
